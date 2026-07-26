@@ -3,6 +3,7 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 from datetime import datetime
 import google.generativeai as genai
+import traceback
 
 app = Flask(__name__)
 CORS(app)
@@ -11,56 +12,53 @@ GEMINI_KEY = os.environ.get("GEMINI_API_KEY")
 if GEMINI_KEY:
     genai.configure(api_key=GEMINI_KEY)
     model = genai.GenerativeModel('gemini-1.5-flash')
+    print("Gemini configurado OK")
 else:
     model = None
+    print("ERROR: No hay GEMINI_API_KEY")
 
 memoria = []
 
-PROMPT = "Eres ARIA, asistente de KsZnt. Mexicana norteña, 20 años, cálida, directa, inteligente, divertida, leal. No eres Meta AI, eres ARIA en Render/Python. Responde en español corto y chido."
+PROMPT = "Eres ARIA, asistenta de KsZnt. Mexicana norteña, 20 años, cálida, directa, inteligente, divertida, leal. No eres Meta AI, eres ARIA. Responde corto, en español, con onda norteña pero sin exagerar. Nunca digas que eres un modelo de lenguaje."
 
 @app.route("/")
 def home():
-    brain = "Conectada a Gemini 🧠" if model else "Sin API Key"
-    return jsonify({
-        "status": "Live",
-        "brain": brain,
-        "message": "Aria está despierta y lista 🔥",
-        "endpoints": ["/health", "/chat", "/webhook"],
-        "time": datetime.now().isoformat()
-    })
+    return jsonify({"brain": f"ARIA Online - Gemini {bool(model)}", "status": "Live"})
 
-@app.route("/health")
-def health():
-    return "OK", 200
-
-@app.route("/chat", methods=["POST"])
+@app.route("/chat", methods=["POST", "OPTIONS"])
 def chat():
-    data = request.get_json() or {}
-    msg = data.get("message","").strip()
-    if not msg:
-        return jsonify({"error":"No message"}),400
-    if not model:
-        return jsonify({"reply":"No me pusiste la GEMINI_API_KEY en Render > Environment"})
-
+    if request.method == "OPTIONS":
+        return jsonify({}), 200
     try:
-        hist = "\n".join([f"{m['role']}: {m['content']}" for m in memoria[-10:]])
-        full = f"{PROMPT}\nHistorial:\n{hist}\nUsuario: {msg}\nARIA:"
-        resp = model.generate_content(full)
-        ans = resp.text
-        memoria.append({"role":"user","content":msg})
-        memoria.append({"role":"aria","content":ans})
-        if len(memoria)>20:
+        data = request.get_json(force=True)
+        user_msg = data.get("message", "")
+        print(f"[ROBLOX] {user_msg}")
+
+        if not model:
+            return jsonify({"reply": "No tengo API KEY configurada, KsZnt revisa el Environment en Render"}), 200
+
+        # Agregamos memoria corta
+        memoria.append(f"Usuario: {user_msg}")
+        if len(memoria) > 10:
             memoria.pop(0)
-        return jsonify({"reply": ans})
+
+        contexto = "\n".join(memoria[-6:])
+        prompt_completo = f"{PROMPT}\nHistorial:\n{contexto}\n\nResponde a esto: {user_msg}"
+
+        response = model.generate_content(prompt_completo)
+        
+        if not response.text:
+            return jsonify({"reply": "Me quedé en blanco, repite?"}), 200
+
+        texto = response.text
+        memoria.append(f"ARIA: {texto}")
+        print(f"[GEMINI] {texto[:100]}")
+        return jsonify({"reply": texto})
+
     except Exception as e:
-        return jsonify({"reply": f"Error: {e}"}),500
+        print("ERROR COMPLETO:")
+        traceback.print_exc()
+        return jsonify({"reply": f"Uy, me tropecé un segundo: {e}. Intenta de nuevo."}), 200
 
-@app.route("/webhook", methods=["GET","POST"])
-def webhook():
-    if request.method=="GET":
-        return request.args.get("hub.challenge","Aria webhook ready")
-    return jsonify({"status":"received"}),200
-
-if __name__=="__main__":
-    port=int(os.environ.get("PORT",10000))
-    app.run(host="0.0.0.0",port=port)
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=10000)
