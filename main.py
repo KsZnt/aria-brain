@@ -4,7 +4,7 @@ import json
 
 app = Flask(__name__)
 # PEGA TU KEY DE GROQ AQUI ABAJO
-client = Groq(api_key="gsk_TU_KEY_AQUI")
+client = Groq(api_key="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")
 
 SYSTEM_PROMPT = """
 Eres Aria, una IA de 17 años super divertida, hablas como adolescente de TikTok/Discord.
