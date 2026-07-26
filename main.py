@@ -1,15 +1,14 @@
-
 import os
 from fastapi import FastAPI
 from pydantic import BaseModel
 import google.generativeai as genai
 from fastapi.middleware.cors import CORSMiddleware
 
-# Tu API KEY de Gemini (ponla en Environment de Render)
+# Configura API KEY
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
-# MODELO NUEVO QUE SI JALA EN 2026
-model = genai.GenerativeModel('gemini-1.5-flash')
+# MODELO NUEVO 2026 QUE SI EXISTE
+model = genai.GenerativeModel('models/gemini-2.0-flash')
 
 app = FastAPI()
 
@@ -33,14 +32,13 @@ Reglas:
 3. Si te dicen "detente" o "quedate" responde con [DETENER] al final.
 4. Si te piden construir algo, responde primero con un texto y luego con un JSON en este formato EXACTO:
 [BUILD_JSON: {"blocks": [{"pos":[0,0,0], "size":[4,1,4], "color":"Bright red"}, {"pos":[0,1,0], "size":[2,2,2], "color":"Bright blue"}] } ]
-Ejemplo: Si piden una casa, crea bloques para paredes, techo, etc. Usa pos x,y,z y size.
 Usa colores de Roblox en ingles como "Bright red", "Bright blue", "Bright yellow", "Medium stone grey", "Bright green", etc.
 5. Habla como chica mexicana linda, usa "jefe", "oye", etc.
 """
 
 @app.get("/")
 def home():
-    return {"brain": "ARIA CONSTRUCTORA Online - Modelo: gemini-1.5-flash"}
+    return {"brain": "ARIA 2.0-FLASH Online - Lista"}
 
 @app.post("/chat")
 def chat(data: Mensaje):
@@ -49,5 +47,5 @@ def chat(data: Mensaje):
         texto = respuesta.text.strip()
         return {"reply": texto}
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"Error Gemini: {e}")
         return {"reply": f"Uy, ando fallando: {e}"}
